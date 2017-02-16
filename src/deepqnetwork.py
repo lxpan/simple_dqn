@@ -117,12 +117,13 @@ class DeepQNetwork:
 
     # feed-forward pass for poststates to get Q-values
     self._setInput(poststates)
-    postq = self.target_model.fprop(self.input, inference = True)
-    assert postq.shape == (self.num_actions, self.batch_size)
+    postq_online = self.model.fprop(self.input, inference=True)
+    postq_target = self.target_model.fprop(self.input, inference = True)
+    assert postq_target.shape == (self.num_actions, self.batch_size)
 
     # calculate max Q-value for each poststate
-    maxpostq = self.be.max(postq, axis=0).asnumpyarray()
-    assert maxpostq.shape == (1, self.batch_size)
+    # maxpostq = self.be.max(postq, axis=0).asnumpyarray()
+    # assert maxpostq.shape == (1, self.batch_size)
 
     # feed-forward pass for prestates
     self._setInput(prestates)
@@ -131,16 +132,18 @@ class DeepQNetwork:
 
     # make copy of prestate Q-values as targets
     targets = preq.asnumpyarray().copy()
-
+    argmax_postq = self.be.argmax(postq_online, axis=0).asnumpyarray()
+    # targets[a][
     # clip rewards between -1 and 1
     rewards = np.clip(rewards, self.min_reward, self.max_reward)
+    postq_array = postq_target.asnumpyarray()
 
     # update Q-value targets for actions taken
     for i, action in enumerate(actions):
       if terminals[i]:
         targets[action, i] = float(rewards[i])
       else:
-        targets[action, i] = float(rewards[i]) + self.discount_rate * maxpostq[0,i]
+        targets[action, i] = float(rewards[i]) + self.discount_rate * postq_array[int(argmax_postq[0, i]), i]  # maxpostq[0,i]
 
     # copy targets to GPU memory
     self.targets.set(targets)
