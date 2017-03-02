@@ -143,6 +143,7 @@ class DeepQNetwork:
       if terminals[i]:
         targets[action, i] = float(rewards[i])
       else:
+        # Double Q-learning
         targets[action, i] = float(rewards[i]) + self.discount_rate * postq_array[int(argmax_postq[0, i]), i]  # maxpostq[0,i]
 
     # copy targets to GPU memory
